@@ -1,0 +1,9 @@
+{
+  "name": "opendroneid-core-c",
+  "version": "0.0.0+4b266c7",
+  "description": "Pinned OpenDroneID Core C encoder",
+  "license": "Apache-2.0",
+  "build": {
+    "includeDir": "src"
+  }
+}
