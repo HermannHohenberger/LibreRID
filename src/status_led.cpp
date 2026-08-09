@@ -1,6 +1,7 @@
 #include "status_led.h"
 
-StatusLed::StatusLed(uint8_t pin) : pin_(pin) {}
+StatusLed::StatusLed(uint8_t pin, bool rgb, bool active_low)
+    : pin_(pin), rgb_(rgb), active_low_(active_low) {}
 
 void StatusLed::set(DeviceStatus status) {
   status_ = status;
@@ -25,6 +26,14 @@ void StatusLed::update() {
 }
 
 void StatusLed::write(bool on) {
+  if (!initialised_) {
+    if (!rgb_) pinMode(pin_, OUTPUT);
+    initialised_ = true;
+  }
+  if (!rgb_) {
+    digitalWrite(pin_, active_low_ ? !on : on);
+    return;
+  }
   uint8_t red = 0;
   uint8_t green = 0;
   uint8_t blue = 0;

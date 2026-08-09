@@ -12,6 +12,20 @@ boot. Console commands remain available for diagnostics.
 | GPIO 17 | LibreRID TX | RX of the selected FC UART |
 | GND | Common ground | GND |
 
+### Seeed Studio XIAO ESP32-S3
+
+| XIAO pad | Chip pin / function | Flight controller |
+|---|---|---|
+| D7 / RX | GPIO44, LibreRID RX | TX of the selected FC UART |
+| D6 / TX | GPIO43, LibreRID TX | RX of the selected FC UART |
+| GND | Common ground | GND |
+| 5V | Protected 5 V input | FC regulated 5 V through Schottky diode |
+
+Seeed requires a diode when an external source powers the XIAO through its 5V
+pad: diode anode to FC 5 V, cathode (striped end) to the XIAO 5V pad. Do not
+connect FC power and USB power simultaneously. The external 2.4 GHz antenna must
+be attached to the U.FL connector before powering the board.
+
 TX and RX are crossed. Both sides use 3.3 V UART logic.
 
 During the first bench test, power both boards through their own USB connectors
