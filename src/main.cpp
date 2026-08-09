@@ -14,20 +14,43 @@ extern "C" {
 }
 
 namespace {
-constexpr uint8_t kRgbLedPin = 48;
-constexpr uint32_t kMessageIntervalMs = 200;
-constexpr uint8_t kMessageTypeCount = 5;
+#ifndef LIBRERID_UART_RX_PIN
+#define LIBRERID_UART_RX_PIN 18
+#endif
+#ifndef LIBRERID_UART_TX_PIN
+#define LIBRERID_UART_TX_PIN 17
+#endif
+#ifndef LIBRERID_STATUS_LED_PIN
+#define LIBRERID_STATUS_LED_PIN 48
+#endif
+#ifndef LIBRERID_STATUS_LED_RGB
+#define LIBRERID_STATUS_LED_RGB 1
+#endif
+#ifndef LIBRERID_STATUS_LED_ACTIVE_LOW
+#define LIBRERID_STATUS_LED_ACTIVE_LOW 0
+#endif
 
-BLEMultiAdvertising advertiser(1);
+constexpr int8_t kUartRxPin = LIBRERID_UART_RX_PIN;
+constexpr int8_t kUartTxPin = LIBRERID_UART_TX_PIN;
+constexpr uint8_t kStatusLedPin = LIBRERID_STATUS_LED_PIN;
+constexpr uint32_t kMessageIntervalMs = 200;
+constexpr uint32_t kLongRangeUpdateIntervalMs = 1000;
+constexpr uint8_t kMessageTypeCount = 5;
+constexpr esp_power_level_t kBleTxPower = ESP_PWR_LVL_P9;
+
+BLEMultiAdvertising advertiser(2);
 ODID_UAS_Data uas_data;
 ConfigurationManager configuration;
-StatusLed status_led(kRgbLedPin);
-InavMspClient inav_msp(Serial1, 18, 17);
+StatusLed status_led(kStatusLedPin, LIBRERID_STATUS_LED_RGB != 0,
+                     LIBRERID_STATUS_LED_ACTIVE_LOW != 0);
+InavMspClient inav_msp(Serial1, kUartRxPin, kUartTxPin);
 FlightStateManager flight_state;
 uint8_t message_counters[ODID_MSG_COUNTER_AMOUNT] = {};
 uint8_t legacy_payload[31] = {};
+uint8_t long_range_payload[6 + 3 + kMessageTypeCount * ODID_MESSAGE_SIZE] = {};
 uint8_t phase = 0;
 uint32_t last_message_ms = 0;
+uint32_t last_long_range_update_ms = 0;
 bool broadcasting = false;
 bool msp_probe_active = false;
 bool dynamic_broadcast = false;
@@ -41,11 +64,26 @@ esp_ble_gap_ext_adv_params_t legacy_adv_params = {
     .channel_map = ADV_CHNL_ALL,
     .own_addr_type = BLE_ADDR_TYPE_RANDOM,
     .filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
-    .tx_power = ESP_PWR_LVL_P3,
+    .tx_power = kBleTxPower,
     .primary_phy = ESP_BLE_GAP_PHY_1M,
     .max_skip = 0,
     .secondary_phy = ESP_BLE_GAP_PHY_1M,
     .sid = 0,
+    .scan_req_notif = false,
+};
+
+esp_ble_gap_ext_adv_params_t coded_adv_params = {
+    .type = ESP_BLE_GAP_SET_EXT_ADV_PROP_NONCONN_NONSCANNABLE_UNDIRECTED,
+    .interval_min = 1200,  // 750 ms in 0.625 ms units
+    .interval_max = 1600,  // 1000 ms
+    .channel_map = ADV_CHNL_ALL,
+    .own_addr_type = BLE_ADDR_TYPE_RANDOM,
+    .filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
+    .tx_power = kBleTxPower,
+    .primary_phy = ESP_BLE_GAP_PHY_CODED,
+    .max_skip = 0,
+    .secondary_phy = ESP_BLE_GAP_PHY_CODED,
+    .sid = 1,
     .scan_req_notif = false,
 };
 
@@ -172,6 +210,71 @@ bool publishCurrentMessage() {
   return updated;
 }
 
+bool appendEncodedMessage(ODID_MessagePack_data& pack, bool valid,
+                          int (*encoder)(ODID_Message_encoded*)) {
+  if (!valid) {
+    return true;
+  }
+  if (pack.MsgPackSize >= ODID_PACK_MAX_MESSAGES ||
+      encoder(&pack.Messages[pack.MsgPackSize]) != ODID_SUCCESS) {
+    return false;
+  }
+  ++pack.MsgPackSize;
+  return true;
+}
+
+bool publishLongRangePack() {
+  ODID_MessagePack_data pack;
+  odid_initMessagePackData(&pack);
+
+  const auto encode_location = [](ODID_Message_encoded* output) {
+    return encodeLocationMessage(&output->location, &uas_data.Location);
+  };
+  const auto encode_basic_id = [](ODID_Message_encoded* output) {
+    return encodeBasicIDMessage(&output->basicId, &uas_data.BasicID[0]);
+  };
+  const auto encode_self_id = [](ODID_Message_encoded* output) {
+    return encodeSelfIDMessage(&output->selfId, &uas_data.SelfID);
+  };
+  const auto encode_system = [](ODID_Message_encoded* output) {
+    return encodeSystemMessage(&output->system, &uas_data.System);
+  };
+  const auto encode_operator = [](ODID_Message_encoded* output) {
+    return encodeOperatorIDMessage(&output->operatorId, &uas_data.OperatorID);
+  };
+
+  if (!appendEncodedMessage(pack, uas_data.LocationValid != 0,
+                            encode_location) ||
+      !appendEncodedMessage(pack, uas_data.BasicIDValid[0] != 0,
+                            encode_basic_id) ||
+      !appendEncodedMessage(pack, uas_data.SelfIDValid != 0, encode_self_id) ||
+      !appendEncodedMessage(pack, uas_data.SystemValid != 0, encode_system) ||
+      !appendEncodedMessage(pack, uas_data.OperatorIDValid != 0,
+                            encode_operator)) {
+    return false;
+  }
+
+  ODID_MessagePack_encoded encoded_pack = {};
+  if (encodeMessagePack(&encoded_pack, &pack) != ODID_SUCCESS) {
+    return false;
+  }
+
+  const size_t pack_length = 3 + pack.MsgPackSize * ODID_MESSAGE_SIZE;
+  const size_t total_length = 6 + pack_length;
+  if (total_length > sizeof(long_range_payload) || total_length > 255) {
+    return false;
+  }
+
+  long_range_payload[0] = static_cast<uint8_t>(pack_length + 5);
+  long_range_payload[1] = 0x16;
+  long_range_payload[2] = 0xfa;
+  long_range_payload[3] = 0xff;
+  long_range_payload[4] = 0x0d;
+  long_range_payload[5] = message_counters[ODID_MSG_COUNTER_PACKED]++;
+  memcpy(&long_range_payload[6], &encoded_pack, pack_length);
+  return advertiser.setAdvertisingData(1, total_length, long_range_payload);
+}
+
 bool initialiseBluetooth() {
   BLEDevice::init("");
 
@@ -179,11 +282,25 @@ bool initialiseBluetooth() {
   esp_fill_random(random_address, sizeof(random_address));
   random_address[0] |= 0xC0;
 
-  advertiser.setAdvertisingParams(0, &legacy_adv_params);
-  advertiser.setInstanceAddress(0, random_address);
+  if (!advertiser.setAdvertisingParams(0, &legacy_adv_params) ||
+      !advertiser.setInstanceAddress(0, random_address)) {
+    return false;
+  }
   advertiser.setDuration(0);
 
-  if (!publishCurrentMessage()) {
+  if (!advertiser.setAdvertisingParams(1, &coded_adv_params) ||
+      !advertiser.setInstanceAddress(1, random_address)) {
+    return false;
+  }
+  advertiser.setDuration(1);
+
+  if (esp_ble_gap_set_prefered_default_phy(
+          ESP_BLE_GAP_PHY_OPTIONS_PREF_S8_CODING,
+          ESP_BLE_GAP_PHY_OPTIONS_PREF_S8_CODING) != ESP_OK) {
+    return false;
+  }
+
+  if (!publishCurrentMessage() || !publishLongRangePack()) {
     return false;
   }
   return advertiser.start();
@@ -214,7 +331,8 @@ void printHelp() {
   Serial.println("  test       (stage public M1 test values)");
   Serial.println("  save       (validate, persist and restart)");
   Serial.println("  reset      (erase configuration and restart)");
-  Serial.println("  msp start  (probe INAV on RX=GPIO18, TX=GPIO17)");
+  Serial.printf("  msp start  (probe INAV on RX=GPIO%d, TX=GPIO%d)\n",
+                kUartRxPin, kUartTxPin);
   Serial.println("  msp show");
   Serial.println("  msp broadcast (map live INAV data with TEST identity)");
   Serial.println("  help");
@@ -266,6 +384,7 @@ void handleCommand(String command) {
   } else if (command.startsWith("set operator ")) {
     configuration.pending().operator_id = command.substring(13);
     configuration.pending().test_profile =
+        configuration.pending().serial_number == "LIBRERIDHH0000000001" ||
         configuration.pending().serial_number == "LIBR0DEV000000000001";
     Serial.println("Operator ID staged (masked; use 'save' to persist).");
   } else if (command.startsWith("set serial ")) {
@@ -299,7 +418,8 @@ void handleCommand(String command) {
     if (!msp_probe_active) {
       inav_msp.begin();
       msp_probe_active = true;
-      Serial.println("MSP probe started at 115200 baud (RX=18, TX=17).");
+      Serial.printf("MSP probe started at 115200 baud (RX=%d, TX=%d).\n",
+                    kUartRxPin, kUartTxPin);
     } else {
       Serial.println("MSP probe already active.");
     }
@@ -376,22 +496,24 @@ void setup() {
   }
   initialiseStaticData(configuration.current());
   if (!initialiseBluetooth()) {
-    Serial.println("ERROR: BLE4 advertising failed");
+    Serial.println("ERROR: BLE4/BLE5 advertising failed");
     status_led.set(DeviceStatus::FatalError);
     return;
   }
 
-  Serial.printf("BLE4 active: serial=%s operator=%s\n",
+  Serial.printf("BLE4 Legacy + BLE5 Coded PHY active: serial=%s operator=%s\n",
                 configuration.current().serial_number.c_str(),
                 configuration.maskedOperatorId().c_str());
   status_led.set(DeviceStatus::Broadcasting);
   broadcasting = true;
   last_message_ms = millis();
+  last_long_range_update_ms = last_message_ms;
 
   inav_msp.begin();
   msp_probe_active = true;
   dynamic_broadcast = true;
-  Serial.println("MSP auto-start: 115200 baud (RX=18, TX=17).");
+  Serial.printf("MSP auto-start: 115200 baud (RX=%d, TX=%d).\n",
+                kUartRxPin, kUartTxPin);
   Serial.println("Live INAV mapping enabled automatically.");
 }
 
@@ -446,5 +568,15 @@ void loop() {
     Serial.println("ERROR: BLE4 payload update failed");
     status_led.set(DeviceStatus::FatalError);
     broadcasting = false;
+    return;
+  }
+
+  if (now - last_long_range_update_ms >= kLongRangeUpdateIntervalMs) {
+    last_long_range_update_ms = now;
+    if (!publishLongRangePack()) {
+      Serial.println("ERROR: BLE5 Coded PHY payload update failed");
+      status_led.set(DeviceStatus::FatalError);
+      broadcasting = false;
+    }
   }
 }

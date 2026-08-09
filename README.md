@@ -3,7 +3,8 @@
 Open Electronic Identification Module prototype for RC aircraft.
 
 LibreRID reads live GNSS, altitude and ARM state from an INAV flight controller
-over MSP and broadcasts OpenDroneID messages using Bluetooth 4 Legacy
+over MSP and broadcasts OpenDroneID messages simultaneously using Bluetooth 4
+Legacy and Bluetooth 5 Long Range (Coded PHY)
 Advertising. MSP discovery and live mapping start automatically after boot.
 
 This repository contains experimental firmware, not a certified EU Direct
@@ -37,6 +38,12 @@ MAVLink, Serial RX, Sensor Input and Peripherals must be disabled on UART4.
 pio run
 ```
 
+Build specifically for the Seeed Studio XIAO ESP32-S3:
+
+```sh
+pio run --environment seeed-xiao-esp32s3
+```
+
 ## Flash and monitor
 
 Connect the USB-C socket labeled `USB` on the board. If the board is not
@@ -56,6 +63,12 @@ fatal firmware or BLE error.
 
 Identity configuration and NVS persistence are documented in
 [`docs/usb-configuration.md`](docs/usb-configuration.md).
+
+Ground range test results are recorded in
+[`docs/rf-range-test-2026-08-04.md`](docs/rf-range-test-2026-08-04.md) (+3 dBm)
+and [`docs/rf-range-test-2026-08-05.md`](docs/rf-range-test-2026-08-05.md)
+(+9 dBm). The first real-flight reception record is documented in
+[`docs/rf-flight-test-2026-08-09.md`](docs/rf-flight-test-2026-08-09.md).
 
 ## Identity and privacy
 
@@ -85,5 +98,7 @@ LibreRID is licensed under the Apache License 2.0. See [`LICENSE`](LICENSE).
 - development serial is not an allocated ANSI/CTA-2063 manufacturer serial;
 - no EU declaration of conformity or radio/conformity assessment;
 - no cryptographic authentication (`Untrusted` in some receiver apps);
-- Bluetooth 4 Legacy is the only implemented broadcast transport;
-- real-flight validation and RF range testing remain outstanding.
+- Bluetooth 4 Legacy and Bluetooth 5 Long Range are implemented; receiver
+  support for Coded PHY varies between phones;
+- one real-flight reception test passed, but broader flight validation and a
+  repeatable +3/+9 dBm RF comparison remain outstanding.
