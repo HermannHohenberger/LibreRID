@@ -1,8 +1,8 @@
 # Knoten v1 – Konzeption RID-Empfänger (Liegenschaftswache-Demo)
 
-Stand: 2026-11-08 · Status: Konzept zur Diskussion · Arbeitsname: **Groundstack-Knoten v0**
-Zuhause dieses Dokuments ist der Startup-Trichter; aus dem **go** heraus wird daraus ein
-eigenes Projekt (z. B. `RidNode/` mit Steuerblatt – Anlage nur durch Hermann).
+Stand: 2026-11-08 · Status: Konzept v0 · Arbeitsname: **LibreRID-RX (Knoten v0)**
+Zuhause: `CLI-Projekte/LibreRID/rx/` (ein Repo, zwei Stränge – Entscheidung 2026-11-08,
+siehe `rx/PROJEKT.md`).
 
 ## 1. Zweck v0
 
@@ -109,7 +109,7 @@ klassischer ESP32 nicht. Konsequenz:
 ## 7. Entscheidungspunkte
 
 - **E1 (jetzt):** Welcher ESP32 liegt vor? → Pfad Woche 1 (Legacy-Empfang vs. C3-Kauf).
-- **E2:** v0-Prototyp in `RidNode/` neu aufsetzen oder als Unterprojekt unter LibreRID?
-  (Empfehlung: neu – LibreRID bleibt der Sender, der Knoten ist ein zweites Produkt.)
+- **E2 (entschieden 2026-11-08):** RX wohnt als Unterprojekt `rx/` im LibreRID-Repo
+  neben `tx/` – geteiltes Protokoll, geteilte Geschichte; ein späteres Ausgliedern bleibt möglich.
 - **E3:** Dashboard-Sprache Python/Flask vs. Node/Express – Geschmack, beides trivial;
   Empfehlung Python (Mosquitto-Paho, Shapely für Polygon, ihr Standard-Ökosystem).
