@@ -64,6 +64,28 @@ klassischer ESP32 nicht. Konsequenz:
   referenzimplementiert, nachbaubar.
 - Transport nach draußen: **MQTT** (Mosquitto läuft bereits auf dem HomeLab/AGV-Watch) –
  Topic `rid/<empfaenger>`; Fallback HTTP-POST.
+
+**Datenpfade im Überblick (Stand 2026-11-08):**
+- **v0 – Heimweg über WLAN (heute machbar, keine Neuanschaffung):**
+  `S3-DevKitC → WLAN → MQTT (HomeLab) → GEEKOM-Strecke → ntfy → Handy`.
+  Rohdatenstrom komplett, Dashboard inklusive.
+- **v1 – Meshtastic-Privatkanal (ernetzunabhängiger Alarmweg):** zwei saubere Varianten:
+  1. **MQTT-Injection:** RX publiziert in den Meshtastic-MQTT-Bridge-Topic eines
+     Router-Knotens; die Meldung erscheint im Privatkanal. Kein Zusatz-Hardware-Teil.
+  2. **Serial-Relay:** RX schickt komprimierte Events per UART an einen Meshtastic-Knoten,
+     dessen Serial-Plugin sie ins Mesh gibt. Mehr Verkabelung, funktioniert ohne Router-WLAN –
+     Vorstufe des Krisen-Rückgrats.
+- **Eherne Funk-Regel:** LoRa-Airtime ist winzig. Über das Mesh laufen nur **verdichtete
+  Ereignisse** (Erstkontakt, Überflug-Alarm, Lebenszeichen 1×/10 min), **niemals** der
+  Rohdatenstrom der Sekunde – sonst verstopfen Privatkanal und Akkus. WLAN/MQTT trägt den Rest.
+
+**Produkt-Prototyp diymore ESP32-S3-LoRa V4 (~37 €):** Sensor (BLE5/WiFi) + SX1262-LoRa +
+GNSS-Option auf einem Board – genau die Zielhardware des Outdoor-Knotens. Zwei Vorbehalte
+vor der Bestellung: (1) Meshtastic-Firmware-Support für exakt dieses Board-Profil
+(SX1262-Pinmap bei S3) verifizieren; (2) ein Board kann nicht gleichzeitig eigene
+RX-Firmware und Meshtastic-Firmware laufen lassen – die Einkabel-Variante braucht entweder
+ein eigenes Firmware-Image mit LoRa-Client (Phase 2) oder die Serial-Relay-Architektur
+mit zwei Brettern (RX-Board + Meshtastic-Board im selben Gehäuse).
 - **Referenzfunde (verifiziert 2026-11-08):**
   - `opendroneid/opendroneid-core-c` – Dekodier-Bibliothek; README verlinkt ESP32-
     Empfangsbeispiel, Linux-Scanner, Android-Receiver (`receiver-android`).
@@ -108,7 +130,9 @@ klassischer ESP32 nicht. Konsequenz:
 
 ## 7. Entscheidungspunkte
 
-- **E1 (jetzt):** Welcher ESP32 liegt vor? → Pfad Woche 1 (Legacy-Empfang vs. C3-Kauf).
+- **E1 (gelöst 2026-11-08):** ESP32-S3-DevKitC-1 (N16R2) ist 3× vorrätig → Pfad B,
+  voller Umfang inkl. BLE5 Long Range. diymore ESP32-S3-LoRa V4 (868 MHz, GNSS-Option, ~37 €)
+  als Produkt-Prototyp bestellt werden, wenn v0 steht.
 - **E2 (entschieden 2026-11-08):** RX wohnt als Unterprojekt `rx/` im LibreRID-Repo
   neben `tx/` – geteiltes Protokoll, geteilte Geschichte; ein späteres Ausgliedern bleibt möglich.
 - **E3:** Dashboard-Sprache Python/Flask vs. Node/Express – Geschmack, beides trivial;

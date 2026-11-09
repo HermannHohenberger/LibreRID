@@ -1,10 +1,10 @@
 # LibreRID-RX (Knoten v0)
 
-**Status:** EXPERIMENT <!-- Vorschlag – Status setzt nur der Mensch -->
+**Status:** EXPERIMENT
 **Bereich:** Privat (Entwicklung)
-**Fokus (jetzt):** Entscheidung E1: welcher ESP32 ist vorrätig? Danach Pfad A (BLE4-Legacy-Empfang) oder Pfad B (C3/S3-Kauf, voller Umfang)
-**Blockade:** wartet auf E1 (Hardware-Inventar)
-**Zuletzt angefasst:** 2026-11-08 – Ordner aus Reorg angelegt, Konzept dokumentiert
+**Fokus (jetzt):** v0-Aufbau auf vorhandenem ESP32-S3-DevKitC (E1 gelöst: BLE5 LRfähig): BLE-Scan → MQTT → ntfy-Kette testen
+**Blockade:** -
+**Zuletzt angefasst:** 2026-11-08 – E1 entschieden (S3 vorhanden), Meshtastic-Datenpfad konkretisiert
 
 ## Wozu existiert das?
 
