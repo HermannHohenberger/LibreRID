@@ -1,6 +1,6 @@
 # LibreRID-TX
 
-**Status:** WARTUNG <!-- übernommen aus portfolio.md-Zeile LibreRID – bitte bestätigen/annehmen -->
+**Status:** WARTUNG <!-- von Hermann am 2026-11-08 bestätigt -->
 **Bereich:** Privat
 **Fokus (jetzt):** Läuft produktiv an der TBS-Chupito; Feature-Branch `codex/xiao-coded-phy-flight-tests` (XIAO Coded PHY + RF-Testprotokolle) noch nicht mit main gemergt
 **Blockade:** -
