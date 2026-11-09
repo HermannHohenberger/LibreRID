@@ -1,6 +1,6 @@
 # LibreRID
 
-Open Electronic Identification Module prototype for RC aircraft.
+Open Electronic Identification Module prototype for FPV-Drones.
 
 LibreRID reads live GNSS, altitude and ARM state from an INAV flight controller
 over MSP and broadcasts OpenDroneID messages simultaneously using Bluetooth 4
