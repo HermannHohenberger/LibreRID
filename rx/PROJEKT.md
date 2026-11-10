@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENT
 **Bereich:** Privat (Entwicklung)
-**Fokus (jetzt):** v0-Aufbau auf vorhandenem ESP32-S3-DevKitC (E1 gelöst: BLE5 LRfähig): BLE-Scan → MQTT → ntfy-Kette testen
+**Fokus (jetzt):** v0 auf Brett geflasht & live: Dual-PHY-Scan läuft (cfg_mask 0x03), JSON-Pipeline seriell bewiesen. Nächste Schritte: config.h befüllen (WLAN/MQTT) → MQTT-Strecke HomeLab → Feldtest mit Chupito-TX am Modellflugplatz.
 **Blockade:** -
 **Zuletzt angefasst:** 2026-11-08 – E1 entschieden (S3 vorhanden), Meshtastic-Datenpfad konkretisiert
 
@@ -26,7 +26,7 @@ Passiver Remote-ID-Empfänger als Keimzelle des Groundstack: erst eigene Chupito
 
 ## Offene Enden
 
-- [ ] E1: ESP32-Typ im Regal klären (WROOM = Pfad A / C3+ = Pfad B)
+- [x] E1: ESP32-Typ im Regal geklärt – gemessen 2026-11-10: ESP32-S3 rev v0.2, 8 MB PSRAM, BT5 LE (Pfad B)
 - [ ] E3: Dashboard-Stack wählen (Empfehlung Python)
 - [ ] MQTT-Broker-Topic-Design (`rid/<empfaenger>` auf dem HomeLab)
 - [ ] Nach go: Portieren aus dem Startup-Trichter in dieses Repo ist erledigt – dieses hier ist fortan der Produktordner

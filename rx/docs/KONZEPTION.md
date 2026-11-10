@@ -65,8 +65,30 @@ klassischer ESP32 nicht. Konsequenz:
 - Transport nach draußen: **MQTT** (Mosquitto läuft bereits auf dem HomeLab/AGV-Watch) –
  Topic `rid/<empfaenger>`; Fallback HTTP-POST.
 
-**Datenpfade im Überblick (Stand 2026-11-08):**
-- **v0 – Heimweg über WLAN (heute machbar, keine Neuanschaffung):**
+**Datenpfade im Überblick (Stand 2026-11-08, ergänzt um Feldeinsatz):**
+
+**Betriebsfall A – Feld/Flugplatz mit Mobilfunk (Regelfall für Tests):**
+`RX ← WLAN-Hotspot des Handys (LTE) → WireGuard/VPN Hostinger → ntfy → alle Geräte`
+Das Handy ist nicht Empfänger, sondern **Hotspot**: der RX verbindet sich als normaler
+WLAN-Client ins Handy-Netz und postet MQTT/ntfy-Events selbst nach draußen. Kein Handy-
+App, kein Relay, keine Extra-Software – der RX ist identisch mit dem Heim-Betrieb,
+nur dass das Netz mitläuft. Schwächen: Akku am Handy (Dauerhotspot), LTE-Empfang am
+Gelände prüfen.
+
+**Betriebsfall B – Feld ohne Mobilfunk (oder als Redundanz):**
+Empfangenes per **BLE-Legacy-Weiterleitung ans Handy** (exakt das DroneScout-Bridge-
+Prinzip: RX re-sendet gefiltert als BLE 4, jede RID-App am Handy empfängt) – oder per
+Serial-Relay in den Meshtastic-Knoten, Anzeige in der Meshtastic-App, ntfy folgt später,
+sobald wieder Netz da ist (RX puffert Events zwischen, PSRAM sei Dank).
+
+**Betriebsfall C – Heimstation (Stadt):**
+Weder nötig noch erlaubt ist ein eigener Sender: Der reale Test ist der **passierende
+Nachbardrohnen-Verkehr**. RX hängt fest am Haus (WLAN → HomeLab → ntfy), die Liegenschaftswache zählt
+und protokolliert, was über Stadtgebiet ohnehin sendend vorbeifliegt. Der Flugplatz ist
+damit der **Prüfstand** (Chupito mit LibreRID als kontrollierte Quelle), das Zuhause der
+**Ernstfall**. Die Chupito muss das Haus nie überfliegen.
+
+**v0 – Heimweg über WLAN (unverändert):**
   `S3-DevKitC → WLAN → MQTT (HomeLab) → GEEKOM-Strecke → ntfy → Handy`.
   Rohdatenstrom komplett, Dashboard inklusive.
 - **v1 – Meshtastic-Privatkanal (ernetzunabhängiger Alarmweg):** zwei saubere Varianten:
@@ -130,8 +152,13 @@ mit zwei Brettern (RX-Board + Meshtastic-Board im selben Gehäuse).
 
 ## 7. Entscheidungspunkte
 
-- **E1 (gelöst 2026-11-08):** ESP32-S3-DevKitC-1 (N16R2) ist 3× vorrätig → Pfad B,
-  voller Umfang inkl. BLE5 Long Range. diymore ESP32-S3-LoRa V4 (868 MHz, GNSS-Option, ~37 €)
+- **E1 (gelöst 2026-11-08, gemessen 2026-11-10):** ESP32-S3-DevKitC-1 ist 3× vorrätig
+  → Pfad B, voller Umfang inkl. BLE5 Long Range. **Per esptool verifiziert: ESP32-S3
+  QFN56 rev v0.2, Dual Core + LP Core, Wi-Fi + BT 5 (LE), 8 MB PSRAM (AP_3v3) – also
+  Modultyp N16R8, nicht N16R2 wie zuerst notiert.** MAC 28:84:85:91:3d:50 (dieses Brett).
+  Achtung: Board kam mit stummer TinyUSB-CDC-Demo-Firmware – Download-Modus per BOOT+RST.
+  Werkzeug liegt: `~/CLI-Projekte/.tools/esptool-venv/bin/esptool`.
+  diymore ESP32-S3-LoRa V4 (868 MHz, GNSS-Option, ~37 €)
   als Produkt-Prototyp bestellt werden, wenn v0 steht.
 - **E2 (entschieden 2026-11-08):** RX wohnt als Unterprojekt `rx/` im LibreRID-Repo
   neben `tx/` – geteiltes Protokoll, geteilte Geschichte; ein späteres Ausgliedern bleibt möglich.
