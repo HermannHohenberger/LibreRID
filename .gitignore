@@ -6,3 +6,4 @@
 *.elf
 *.map
 compile_commands.json
+rx/firmware/src/config.h
