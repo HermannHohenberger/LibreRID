@@ -1,31 +1,34 @@
 # Feldbetrieb über VPS-Broker (Variante B)
 
-Ziel: `mqtt.hoferland.eu` wird von überall erreichbar (Hostinger-VPS),
-das Heimnetz bleibt unverändert (Pi-hole-Biegung bleibt, Home-Tester läuft weiter).
+Ziel: **`rid.hoferland.eu`** (neu, Zone liegt bei ALL-INKL) zeigt direkt auf den
+Hostinger-VPS. Bestehende Namen/Domains bleiben unangetastet.
 
 ```
-Feld: RX --WLAN-Hotspot--> Mobilfunk --> VPS :7006/TLS (Auth nötig)
-                                        |-> ntfy-Brücke -> Handy (Push)
-Haus: Pi-hole biegt mqtt.hoferland.eu -> docker01 (anonym, nur LAN)
+Feld: RX --WLAN-Hotspot--> Mobilfunk --> rid.hoferland.eu :7006/TLS (Auth)
+                                            |-> ntfy-Brücke -> Handy (Push)
+Haus: RX verbindet sich von innen ebenfalls gegen rid.hoferland.eu (VPS)
+      (Heim-Broker auf docker01 bleibt für HA-Experimente unberührt)
 ```
 
 ## 0. Vorbereitung (einmalig, Hermann)
 
-- [ ] VPS-IP notieren: `ip -4 addr show` auf dem VPS (oder Hetzner/Hostinger-Panel)
-- [ ] DNS: A-Record `mqtt.hoferland.eu` → VPS-IP setzen (dort, wo die Zone liegt –
-      aktuell zeigt sie auf 1&1-Kasserver, also vermutlich IONOS/1&1-Verwaltung)
-- [ ] Pi-hole **unverändert lassen**: interne Zone `mqtt.hoferland.eu → 192.168.178.103`
-      gewinnt zu Hause, draußen greift der neue A-Record.
+- [ ] VPS-IP notieren: `ip -4 addr show` auf dem VPS (öffentliche Adresse)
+- [ ] ALL-INKL DNS-Verwaltung: **A-Record** `rid.hoferland.eu` → VPS-IP
+      (TTD/Standard 300 s ist fein; AAAA weglassen, IPv6-Route später prüfen)
 - [ ] Firewall VPS: Port 7006/tcp öffnen (ufw allow 7006/tcp), 1883 NICHT öffnen.
+- [ ] Test von außerhalb (z. B. Mobilfunk ohne WLAN):
+      `dig +short rid.hoferland.eu` muss die VPS-IP liefern.
 
 ## 1. Zertifikat (Let's Encrypt, standalone)
 
 ```bash
 sudo apt-get install -y certbot
-sudo certbot certonly --standalone -d mqtt.hoferland.eu \
+sudo certbot certonly --standalone -d rid.hoferland.eu --key-type rsa \
   --pre-hook "systemctl stop mosquitto-tmp 2>/dev/null; true" \
   --deploy-hook "docker restart librerid-mosquitto 2>/dev/null; true"
 ```
+(`--key-type rsa` wichtig: Der ESP hat ISRG **Root X1** im Flash; die RSA-Kette
+läuft über X1, die EC-Kette würde über Root X2 gehen und vom ESP nicht gekannt.)
 (7006 muss dafür frei/temporär der Container laufen; Renewal prüft certbot automatisch.)
 
 ## 2. Broker als Docker-Container
@@ -35,9 +38,9 @@ sudo certbot certonly --standalone -d mqtt.hoferland.eu \
 ```
 listener 7006
 ssl_client_renegotiation_interval 43200
-certfile /etc/letsencrypt/live/mqtt.hoferland.eu/fullchain.pem
-keyfile  /etc/letsencrypt/live/mqtt.hoferland.eu/privkey.pem
-cafile   /etc/letsencrypt/live/mqtt.hoferland.eu/chain.pem
+certfile /etc/letsencrypt/live/rid.hoferland.eu/fullchain.pem
+keyfile  /etc/letsencrypt/live/rid.hoferland.eu/privkey.pem
+cafile   /etc/letsencrypt/live/rid.hoferland.eu/chain.pem
 
 allow_anonymous false
 password_file /mosquitto/config/passwd
@@ -107,9 +110,10 @@ ggf. Access-Token nötig – dann als Header ergänzen.)
 
 ## 4. RX-Seite
 
-- `config.h`: `MQTT_USER "librerid-rx"`, `MQTT_PASS "<rx-pass.txt>"`,
-  `MQTT_HOST "mqtt.hoferland.eu"` bleibt (Pi-hole siegt intern, VPS extern).
-- Heim-Broker ignoriert die Credentials (anonymer Modus) → Heimtests bleiben grün.
+- `config.h`: `MQTT_HOST "rid.hoferland.eu"`, `MQTT_USER "librerid-rx"`,
+  `MQTT_PASS "<rx-pass.txt>"`.
+- Gelich laut: `ca_isrg_root_x1.h` passt weiterhin (Let's Encrypt hängt an
+  ISRG Root X1), keine Firmware-Änderung nötig außer `config.h`.
 
 ## 5. Abnahme im Feld
 
