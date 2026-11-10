@@ -5,13 +5,16 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <BLEDevice.h>
 #include <PubSubClient.h>
+#include <time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "esp_gap_ble_api.h"
 
 #include "config.h"
+#include "ca_isrg_root_x1.h"
 #include "rid_parser.h"
 #include "drone_table.h"
 
@@ -93,14 +96,43 @@ static void rescan_if_due() {
 
 // ---- Netzwerk -----------------------------------------------------------
 static WiFiClient s_wifi_client;
+#if MQTT_TLS
+static WiFiClientSecure s_tls_client;
+static PubSubClient s_mqtt(s_tls_client);
+#else
 static PubSubClient s_mqtt(s_wifi_client);
+#endif
 static int s_net = 0;
 static uint32_t s_net_try_ms = 0, s_mqtt_try_ms = 0;
+static bool s_time_synced = false;
 
 static void service_network() {
-    if (WiFi.status() == WL_CONNECTED) return;
+    static bool was_connected = false;
+    if (WiFi.status() == WL_CONNECTED) {
+        if (!was_connected) {
+            was_connected = true;
+            Serial.printf("wifi: verbunden '%s' als %s\n",
+                          WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+        }
+        return;
+    }
+    was_connected = false;
     uint32_t now = millis();
     if (now - s_net_try_ms < 10000) return;
+    // Vollzyklus ohne Erfolg: einmal Umgebung scannen (Diagnose 2,4-GHz-Sicht).
+    if (s_net == 0) {
+        Serial.print("scan netz: ");
+        WiFi.scanDelete();
+        int n = WiFi.scanNetworks(false, true);
+        if (n <= 0) Serial.println("(keine Netze gefunden!)");
+        for (int i = 0; i < n; i++) {
+            Serial.printf("%s[%d,%dB%s] ", WiFi.SSID(i).c_str(), WiFi.RSSI(i),
+                          WiFi.channel(i),
+                          WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? ",offen" : "");
+        }
+        Serial.println();
+        WiFi.scanDelete();
+    }
     Serial.printf("wifi: versuche '%s' (%d/%d)\n", WIFI_SSIDS[s_net], s_net + 1,
                   WIFI_NETWORKS);
     WiFi.disconnect();
@@ -111,15 +143,31 @@ static void service_network() {
 
 static void service_mqtt() {
     if (WiFi.status() != WL_CONNECTED) return;
+#if MQTT_TLS
+    if (!s_time_synced) {
+        if (time(nullptr) > 1700000000L) {
+            s_time_synced = true;
+            Serial.println("zeit: ueber NTP synchronisiert (TLS moeglich)");
+        } else {
+            return;  // TLS ohne Uhrzeit hat immer Zertifikatsfehler
+        }
+    }
+#endif
     if (s_mqtt.connected()) { s_mqtt.loop(); return; }
     uint32_t now = millis();
     if (now - s_mqtt_try_ms < 5000) return;
     s_mqtt_try_ms = now;
+#if MQTT_TLS
+    s_tls_client.setCACert(ISRG_ROOT_X1_PEM);
+#endif
     s_mqtt.setServer(MQTT_HOST, MQTT_PORT);
     s_mqtt.setBufferSize(1024);
     if (s_mqtt.connect(RX_NAME, MQTT_USER[0] ? MQTT_USER : nullptr,
                        MQTT_PASS[0] ? MQTT_PASS : nullptr))
         Serial.println("mqtt: verbunden");
+    else
+        Serial.printf("mqtt: fehlgeschlagen rc=%d (tls-zeit=%d)\n",
+                      s_mqtt.state(), (int)s_time_synced);
 }
 
 // ---- Publikation --------------------------------------------------------
@@ -178,6 +226,7 @@ void setup() {
     s_queue = xQueueCreate(16, sizeof(AdvReportLite));
     table_init();
     start_dual_phy_scan();
+    configTime(0, 0, "pool.ntp.org", "time.google.com");
 
     // Wichtig: WiFi-Modem-Sleep AN lassen – sonst abort() des Koexistenz-Stacks,
     // solange Bluetooth aktiv ist (Fehlerbild: "Should enable WiFi modem sleep").
