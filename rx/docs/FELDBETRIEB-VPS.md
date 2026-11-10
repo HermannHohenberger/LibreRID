@@ -33,6 +33,16 @@ läuft über X1, die EC-Kette würde über Root X2 gehen und vom ESP nicht gekan
 
 ## 2. Broker als Docker-Container
 
+IST- STAND 2026-11-10, live verifiziert: Zertifikat kommt aus **NPM**
+(Proxy-Host `rid.hoferland.eu` + Let's Encrypt in der NPM-UI, Zert-ID `npm-14`).
+Da NPM die Dateien nur per Symlinks in `archive/` pflegt und der Broker-Leser
+(1883) das root-privkey nicht lesen darf, liegt eine **eigentümerkorrigierte
+Kopie** unter `/opt/librerid/mosquitto/certs/` (cron `/etc/cron.d/librerid-cert-sync`,
+täglich 03:17: zurückkopieren + chown + Container-Neustart).
+Mosquitto-Konfig zeigt auf `/mosquitto/certs/*`. WICHTIG: Nach einer
+NPM-Zertifikats-NEUAUSSTELLUNG (andere ID als npm-14) muss der cron-Pfad
+angepasst werden (`ls /var/lib/docker/volumes/npm_letsencrypt/_data/live/`).
+
 `/opt/librerid/mosquitto/mosquitto.conf`:
 
 ```
