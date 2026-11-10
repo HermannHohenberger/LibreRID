@@ -119,11 +119,33 @@ static void service_network() {
     was_connected = false;
     uint32_t now = millis();
     if (now - s_net_try_ms < 10000) return;
+    // Diagnose zuerst (auch wenn Netz 1 leer ist): was sieht die 2,4-GHz-Antenne?
+    static uint32_t s_scan_last = 0;
+    if (now - s_scan_last > 15000) {
+        s_scan_last = now;
+        Serial.print("scan netz: ");
+        WiFi.scanDelete();
+        int n = WiFi.scanNetworks(false, false);  // aktiv: robuster gegen Störungen
+        if (n <= 0) Serial.println("(keine Netze gefunden!)");
+        for (int i = 0; i < n; i++) {
+            Serial.printf("%s[%d,%dB%s] ", WiFi.SSID(i).c_str(), WiFi.RSSI(i),
+                          WiFi.channel(i),
+                          WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? ",offen" : "");
+        }
+        Serial.println();
+        WiFi.scanDelete();
+    }
+    // Leere Platzhalter überspringen (begin("") legt den Treiber lahm).
+    while (WIFI_SSIDS[s_net][0] == '\0') {
+        s_net = (s_net + 1) % WIFI_NETWORKS;
+        if (s_net != 0) continue;
+        return;  // gar kein Netz konfiguriert
+    }
     // Vollzyklus ohne Erfolg: einmal Umgebung scannen (Diagnose 2,4-GHz-Sicht).
     if (s_net == 0) {
         Serial.print("scan netz: ");
         WiFi.scanDelete();
-        int n = WiFi.scanNetworks(false, true);
+        int n = WiFi.scanNetworks(false, false);  // aktiv: robuster gegen Störungen
         if (n <= 0) Serial.println("(keine Netze gefunden!)");
         for (int i = 0; i < n; i++) {
             Serial.printf("%s[%d,%dB%s] ", WiFi.SSID(i).c_str(), WiFi.RSSI(i),
@@ -136,6 +158,7 @@ static void service_network() {
     Serial.printf("wifi: versuche '%s' (%d/%d)\n", WIFI_SSIDS[s_net], s_net + 1,
                   WIFI_NETWORKS);
     WiFi.disconnect();
+    WiFi.mode(WIFI_STA);  // Treiber nach Fehlschlägern sauber zurücksetzen
     WiFi.begin(WIFI_SSIDS[s_net], WIFI_PASSES[s_net]);
     s_net = (s_net + 1) % WIFI_NETWORKS;
     s_net_try_ms = now;
