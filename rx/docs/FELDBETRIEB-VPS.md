@@ -136,6 +136,9 @@ ggf. Access-Token nötig – dann als Header ergänzen.)
 ## 6. IST 2026-11-11: Push-Kette LIVE, Architektur final
 
 End-to-End bewiesen: Test-Sichtung (id R-1A2B3C4D5E) erschien als Handy-Push.
+GLEICHER TAG, REALTEST: Chupito (RID an) -> RX zaehlt frames hoch (drones=1),
+Handy-Push "Drohne gesichtet" erhalten. Echte Funkstrecke verifiziert,
+incl. Hotspot-Betrieb (iPhone, 2,4 GHz, Einstellungen-Seite offen halten!).
 
 ```
 RX (Hotspot) --TLS--> rid.hoferland.eu:7006 (mosquitto)
