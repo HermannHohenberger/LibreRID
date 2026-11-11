@@ -132,3 +132,32 @@ ggf. Access-Token nötig – dann als Header ergänzen.)
 3. Auf dem VPS: `docker logs librerid-bridge --tail 5` – dort jede Meldung sehen.
 4. Handy-Push: ntfy-App, Topic `librerid-feld`.
 5. Chupito einfliegen lassen → `seen`-Meldung mit Seriennummer muss bis aufs Handy.
+
+## 6. IST 2026-11-11: Push-Kette LIVE, Architektur final
+
+End-to-End bewiesen: Test-Sichtung (id R-1A2B3C4D5E) erschien als Handy-Push.
+
+```
+RX (Hotspot) --TLS--> rid.hoferland.eu:7006 (mosquitto)
+  -> librerid-bridge (lauscht librerid/#, Payload t=seen|fix|gone)
+  -> POST https://rid-ntfy.hoferland.eu/<GEHEIM-TOPIC>
+     (rid-ntfy-Container, ntfy latest, 127.0.0.1:2587,
+      KEINE auth.db: Geheim-Topic ist das Passwort, anonym publish ok)
+  -> ntfy-App (Server rid-ntfy.hoferland.eu, Topic = NTFY_TOPIC aus bridge.env)
+```
+
+- TLS/Terminierung rid-ntfy: nginx-proxy-manager (der „openresty"-Prozess ist NPM selbst).
+- Configs: /opt/rid-ntfy/{server.yml,compose.yml}; Brücken-Ziel: /opt/librerid/bridge/bridge.env (NTFY_URL + NTFY_TOPIC).
+- Topic rotieren: NTFY_TOPIC in bridge.env ändern + `docker compose up -d --force-recreate librerid-bridge` + neu abonnieren.
+- alter Flugplatz-ntfy (flugplatz-ntfy, Port 2586): für LibreRID außer Betrieb.
+  SEIT 2026-11-11 kaputt für neue Logins (nach Image-Update 2.11→2.37; auth.db-Verdacht).
+  Reparatur = Hermanns Aufgabe, Agenten fassen sie nicht an.
+
+Lehren aus der 401-Saga (für künftige Debugging-Runden):
+1. Geheimnisse NIE als Literal durchs Chat-Fenster – das Tool verstümmelt
+   `$(...)`, `"\n"`, `:"` schon mal. Stattdessen: Datei + stdin-Pipe oder base64-Block.
+2. „Login 401" zuerst am laufenden Server-Container selbst prüfen
+   (`docker exec <ntfy> ntfy user list` + Debug-Log), bevor irgendwas neu gesetzt wird.
+3. Vor jeder Konfig-Arbeit prüfen, WO die Domain wirklich landet
+   (`dig +short <domain>` + `curl -sI` Server-Header) – rid-ntfy zeigte wegen
+   IONOS-SSL-Zwang wochenlang aufs Blog-Hosting, nicht auf den VPS.
