@@ -18,8 +18,9 @@ Breakout (AliExpress „SX1280 SPI module"; Typ suchen, bevor bestellt wird).
 | 3 | USB-Seriell-Adapter 3,3 V (FT232/CP2102) | solo testen ohne ESP32 | 1 | 8 |
 | 4 | Dupont-Kabel Buchstecker, 10 cm | Ansteuerung M0/M1/M2 + UART | 10 | — |
 
-Hinweis: Amazon-Angebot B09CPDVJKP liefert nicht an Hermanns Adresse –
-anderer Verkäufer oder AliExpress/ebay.de.
+Hinweis: Amazon-Artikel B09CPDVJKP liefert laut Hermann an seine Adresse
+(der „cannot be dispatched"-Hinweis auf der Seite betraf nur die dort gerade
+eingestellte Versandadresse – im Warenkorb gegenprüfen).
 
 **Später (v1, CAD):** nacktes SPI-SX1280-Breakout + Logikpegel-Check (3,3 V).
 
