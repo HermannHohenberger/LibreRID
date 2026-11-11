@@ -53,6 +53,11 @@ liefert nur eigenen CRSF-Verkehr nach bekanntem Binding).
 
 ## Nächste Schritte
 - [ ] Module bestellen (2x E220-400M22S + Antennen)
-- [ ] Chupito-Funkstrecke klären (ELRS? Frequenzband?) – bestimmt den Test
-- [ ] SPI-Bring-Up + CAD-Echow auf Serial
+- [x] Testsender geklärt (2026-11-10): RadioMaster GX15 mit ELRS + mehrere
+      ELRS-RX + Kleinst-Drohnen = 2,4-GHz-Realitäts sender frei verfügbar.
+- [ ] Phase 1b (später): Crossfire 868 MHz abdecken – Hermann besitzt
+      Crossfire TX/RX. Anderer Chip nötig (SX1276-Familie, z. B. RFM95W ~5 €);
+      unklar ist, ob CAD von SX1262/SX1276 die Crossfire-LoRa-Parameter
+      (BW ~1 MHz) zuverlässig greift → Experiment, nicht Annahme.
+- [ ] SPI-Bring-Up + CAD-Echo auf Serial
 - [ ] MQTT-Event `rf` + Brückenerweiterung in `rx/tools/vps_ntfy_bridge.py`
