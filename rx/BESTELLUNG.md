@@ -5,14 +5,23 @@ Alternative: deutsche Funkmodule-Händler (Voigted/ByteRenderer-Umfeld, Amazon)
 mit kürzerer Lieferzeit.
 
 ## Phase 1: ELRS 2,4 GHz (SX1280)
+**Klartext 2026-11-10:** EBYTE E220/E280 sind UART-Module mit eigener MCU –
+kein Direktzugriff auf die SX1280-Register (kein CAD). E280-2G4T12S kann
+trotzdem v0: dokumentierter RSSI-Modus (alle 100 ms RSSI) + 1-MHz-Kanalraster
+→ RSSI-Sweep-Energiescanner. Für CAD (v1) braucht es ein nacktes SPI-SX1280-
+Breakout (AliExpress „SX1280 SPI module"; Typ suchen, bevor bestellt wird).
+
 | # | Artikel | Zweck | Stk | ca. € |
 |---|---------|-------|----:|------:|
-| 1 | E220-400M22S (Semtech SX1280, SPI, 3,3 V, IPEX) | Lauscher am ESP32-S3 | 2 | 22 |
-| 2 | 2,4-GHz-Antenne IPEX/U.FL (2 dBi reicht) | dito | 2 | 6 |
-| 3 | Dupont-Kabel Buchstecker, 10 cm | SPI zum DevKitC | 10 | — |
+| 1 | **EBYTE E280-2G4T12S** (SX1280, UART, RSSI-Modus) | v0-Sweep-Scanner + Testsender-Paar | 2 | 24 |
+| 2 | 2,4-GHz-Antenne IPEX/U.FL (falls Modulvariante ohne PCB-Funkantenne) | dito | 2 | 6 |
+| 3 | USB-Seriell-Adapter 3,3 V (FT232/CP2102) | solo testen ohne ESP32 | 1 | 8 |
+| 4 | Dupont-Kabel Buchstecker, 10 cm | Ansteuerung M0/M1/M2 + UART | 10 | — |
 
-Alternative zu 1: jedes nackte SX1280-Breakout (Ausklaus/SX1280-Modul);
-**kein** ELRS-RX-/TX-Modul (geschlossene Firmware, siehe RF-SX1280-CAD.md).
+Hinweis: Amazon-Angebot B09CPDVJKP liefert nicht an Hermanns Adresse –
+anderer Verkäufer oder AliExpress/ebay.de.
+
+**Später (v1, CAD):** nacktes SPI-SX1280-Breakout + Logikpegel-Check (3,3 V).
 
 ## Phase 1b: Crossfire 868 MHz (Experiment, später bestellbar)
 | # | Artikel | Zweck | Stk | ca. € |
